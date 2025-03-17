@@ -2,10 +2,26 @@ import os
 import re
 import pandas as pd
 from tabulate import tabulate
+
+import argparse
+
 #version 3
 # change1
 # Specify the file name this will be an environment variable later 
-file_name = "IKE_Log_combined_all.txt"
+
+## change filename to use the argument on the CLI for troubleshooting, default to the hardcoded value otherwise
+## run python IKE_DEBUGGER.py <filename> 
+parser = argparse.ArgumentParser()
+
+parser.add_argument('filename_arg')
+
+args = parser.parse_args()
+print(args)
+
+try:
+    file_name = args.filename_arg
+except IndexError:
+    file_name = "saml group mismtach all daemons.txt"
 # saml_ntp_issue.txt
 # saml_config_issues.txt
 # IKE_LOG_SAML_authd_working
@@ -72,6 +88,7 @@ file_name = "IKE_Log_combined_all.txt"
 analysis_output = []
 Incoming_conn = []
 SAML = False
+fnbamd = False
 
 def read_file(filename):
     # Get the directory of the current script
@@ -477,7 +494,7 @@ def ike_parser(text):
                         # check for mantis 1023871 before saml group attribute name mismatch
                         if initial_fnbamd_gmatch_success and not final_fnbamd_gmatch_success and SAML:
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED with SAML after successful initial group match</span> <span style="color: yellow;">\n->Check Mantis 1023871\n</span>')
-                        elif SAML == True:
+                        if SAML == True and not initial_fnbamd_gmatch_success and not final_fnbamd_gmatch_success:
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED with SAML.</span> <span style="color: yellow;">\n->Check Group Mismatch \n-> Check Group Attribute/Name Mismatch</span>')
                         last_10_lines = rest_lines[max(0, k - 9):k + 1]
                         if any("find_matched_usr_grps-Failed group matching" in l for l in last_10_lines):
@@ -899,6 +916,11 @@ ike_log = read_file(file_name)
 if re.search(r'samld', ike_log):
     SAML = True
 
+
+# Check if FNBAMD debugs are present
+
+if re.search(r'\d] fnbamd', ike_log):
+    fnbamd = True
 
 ike_parser(ike_log)
 
