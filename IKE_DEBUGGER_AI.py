@@ -357,13 +357,13 @@ def ike_parser(text):
                     if match:
                         eap_id = match.group(1)
             if user and group==None  and eap_id==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: Unknown')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: Unknown')
             if user and group  and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection </span>\n    user: {user} group: {group}   Fnbamd-ID: {eap_id}')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlasis for the above connection </span>\n    user: {user} group: {group}   Fnbamd-ID: {eap_id}')
             if user and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}')
             if group  and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection </span>\n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}')                            
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection </span>\n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}')                            
             if eap_id:
                 rest_lines = lines[i:]
                 for k,remaining_line in enumerate(rest_lines):
@@ -456,13 +456,13 @@ def ike_parser(text):
                     if match:
                         eap_id = match.group(1)
             if user and group==None  and eap_id==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: Unknown</span>')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: Unknown</span>')
             if user and group  and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection \n    user: {user} group: {group}   Fnbamd-ID: {eap_id}</span>')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: {user} group: {group}   Fnbamd-ID: {eap_id}</span>')
             if user and eap_id and group==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}</span>')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}</span>')
             if group  and eap_id and user==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection \n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}</span>')                            
+                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}</span>')                            
             if eap_id:
                 rest_lines = lines[i:]
                 for k,remaining_line in enumerate(rest_lines):
@@ -523,7 +523,7 @@ def ike_parser(text):
                         context = rest_lines[k:k + 7]
                         for info in context:
                             if 'EAP' in info and 'result' not in info:
-                                analysis_output.append(f'       [{str(i+k+1)}]{info.strip()}')
+                                analysis_output.append(f'[{str(i+k+1)}]{info.strip()}')
 
 # Adding known issue
         if 'compute DH shared secret request queued' in line:
@@ -565,6 +565,43 @@ def ike_parser(text):
         if 'ike' in line and 'certificate validation failed' in line:
             analysis_output.append(f'<span style="color: red;">[{str(i+1)}]IKE negotiation failure observed, due to a possible certificate authentication failure.')
             analysis_output.append(f'<span style="color: yellow;">Please Check:\n CA signed bt valid CA or the root CA istalled in FGT \n Bad PKI user \n Re-check cert auth settings: {issuer} ')
+
+# tunnel flap 1
+        if 'ike' in line and 'ISAKMP SA DELETE-NOTIFY' in line:
+            pattern = r"(\d+\.\d+\.\d+\.\d+:\d+->\d+\.\d+\.\d+\.\d+:\d+)"
+            match = re.search(pattern, line)
+
+            if match:
+                extracted_value = match.group(1)
+                analysis_output.append(f'<span style="color: red;">[{str(i+1)}] Tunnel going down for connection {extracted_value}.</span>')
+            else:
+                analysis_output.append(f'<span style="color: red;">[{str(i+1)}] Tunnel going down for connection {line}.</span>')
+
+# tunnel flap 2
+        if 'ike' in line and 'deleting IPsec SA with SPI' in line:
+            analysis_output.append(f'<span style="color: red;">[{str(i+1)}] Tunnel going down for VPN with SPI as:  {line}.</span>')
+
+# tunnel flap 3
+        if 'ike' in line and 'del route' in line:
+            del_route_pattern = re.compile(r"del route (\d+\.\d+\.\d+\.\d+/\d+\.\d+\.\d+\.\d+)")
+            moving_route_pattern = re.compile(r"moving route (\d+\.\d+\.\d+\.\d+/\d+\.\d+\.\d+\.\d+)")
+            del_match = del_route_pattern.search(line)
+            if del_match:
+                subnet = del_match.group(1)
+                analysis_output.append(f'<span style="color: yellow;">[{str(i+1)}] deleting a route with IKE add-route detected for route: {subnet}.</span>')
+                search_range = range(max(0, i - 5), min(len(lines), i + 6))
+                for j in search_range:
+                    if i != j and "moving route" in lines[j]:
+                        move_match = moving_route_pattern.search(lines[j])
+                        if move_match and move_match.group(1) == subnet:
+                            analysis_output.append(f'<span style="color: red;">[{str(i+1)}] Possible flapping: Matching del and moving route found for subnet: {subnet}.</span>')
+
+# twin connection detected
+
+        if 'ike' in line and 'twin connection detected' in line:
+            analysis_output.append(f'<span style="color: red;">[{str(i+1)}] twin IPSEC connection detected. </span>')
+
+
 
 
 def _extract_lines(lines, start_line, end_line):
@@ -679,7 +716,10 @@ def _phase_1_psk_fail(i,line,comes_line_phase_1,ike_phase_1_type):
         analysis_output.append(f'<span style="color: red;">[{str(i+1)}]::'+' Preshared key (PSK) mismatch for '+f'{Ike_type}'+ ' negotiation '+failure_message.split()[1]+' Please check PSK</span> ')
 
 def _notify_no_proposal_chosen(i,line,comes_line_phase_1):
-    analysis_output.append(f'<span style="color: red;">[{str(i+1)}]::'+' IKE negotiation: '+comes_line_phase_1+ ' - no proposal chosen or negotiation mismatch</span>')
+    analysis_output.append(f'[{str(i+1)}]::'+' IKE negotiation: '+comes_line_phase_1)
+    analysis_output.append(f'<span style="color: red;">[{str(i+1)}]{line.strip()}</span>')
+    analysis_output.append(f'        <span style="color: red;">[{str(i+1)}]no proposal chosen or negotiation mismatch </span>')
+
 
 def _gw_validation_fail(i,line,comes_line_phase_1,ike_phase_1_type):
     Ike_type = ''
