@@ -357,13 +357,13 @@ def ike_parser(text):
                     if match:
                         eap_id = match.group(1)
             if user and group==None  and eap_id==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: Unknown')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: Unknown')
             if user and group  and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlasis for the above connection </span>\n    user: {user} group: {group}   Fnbamd-ID: {eap_id}')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection </span>\n    user: {user} group: {group}   Fnbamd-ID: {eap_id}')
             if user and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection </span>\n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}')
             if group  and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection </span>\n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}')                            
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection </span>\n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}')                            
             if eap_id:
                 rest_lines = lines[i:]
                 for k,remaining_line in enumerate(rest_lines):
@@ -456,13 +456,13 @@ def ike_parser(text):
                     if match:
                         eap_id = match.group(1)
             if user and group==None  and eap_id==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: Unknown</span>')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: Unknown</span>')
             if user and group  and eap_id:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: {user} group: {group}   Fnbamd-ID: {eap_id}</span>')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection \n    user: {user} group: {group}   Fnbamd-ID: {eap_id}</span>')
             if user and eap_id and group==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}</span>')
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection \n    user: {user} group: Unknown   Fnbamd-ID: {eap_id}</span>')
             if group  and eap_id and user==None:
-                analysis_output.append(f'<span style="color: yellow;">   The auth log anlaysis for the above connection \n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}</span>')                            
+                analysis_output.append(f'<span style="color: yellow;">   The auth log analysis for the above connection \n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}</span>')                            
             if eap_id:
                 rest_lines = lines[i:]
                 for k,remaining_line in enumerate(rest_lines):
