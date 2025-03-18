@@ -2,10 +2,26 @@ import os
 import re
 import pandas as pd
 from tabulate import tabulate
+
+import argparse
+
 #version 3
 # change1
 # Specify the file name this will be an environment variable later 
-file_name = "IKE_Log_combined_all.txt"
+
+## change filename to use the argument on the CLI for troubleshooting, default to the hardcoded value otherwise
+## run python IKE_DEBUGGER.py <filename> 
+parser = argparse.ArgumentParser()
+
+parser.add_argument('filename_arg')
+
+args = parser.parse_args()
+print(args)
+
+try:
+    file_name = args.filename_arg
+except IndexError:
+    file_name = "saml group mismtach all daemons.txt"
 # saml_ntp_issue.txt
 # saml_config_issues.txt
 # IKE_LOG_SAML_authd_working
@@ -67,10 +83,12 @@ file_name = "IKE_Log_combined_all.txt"
 # IKE_LOG_V2_overlay_2_init
 # ike_fnbamd_local.txt
 # IKE_LOG_V1_radius_password_wrong_v2.txt
+# IKE_LOG_V2_SAML_MANTIS_1023871
 
 analysis_output = []
 Incoming_conn = []
-SAML = False
+SAML_debugs_present = False
+fnbamd_debugs_present = False
 
 def read_file(filename):
     # Get the directory of the current script
@@ -367,9 +385,9 @@ def ike_parser(text):
                     if eap_id in remaining_line:
                         analysis_output.append(f'   [{str(i+k+1)}]{remaining_line.strip()}')
                     if eap_id in remaining_line and "FNBAM_DENIED" in remaining_line:
-                        if SAML == False:
+                        if SAML_debugs_present == False:
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED</span>')
-                        if SAML == True:
+                        if SAML_debugs_present == True:
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED with SAML.</span> <span style="color: yellow;">\n->Check Group Mismatch \n-> Check Group Attribute/Name Mismatch</span>')
                         last_10_lines = rest_lines[max(0, k - 9):k + 1]
                         if any("find_matched_usr_grps-Failed group matching" in l for l in last_10_lines):
@@ -461,19 +479,27 @@ def ike_parser(text):
                 analysis_output.append(f'<span style="color: yellow;">   The auth log anlysis for the above connection \n    user: Unknown group: {group}   Fnbamd-ID: {eap_id}</span>')                            
             if eap_id:
                 rest_lines = lines[i:]
+
+                # declaring variables for mantis 1023871 group checking
+                initial_fnbamd_gmatch_success = False
+                final_fnbamd_gmatch_success = False
+
                 for k,remaining_line in enumerate(rest_lines):
                     
                     if eap_id in remaining_line:
                         analysis_output.append(f'   [{str(i+k+1)}]{remaining_line.strip()}')
                     if eap_id in remaining_line and "FNBAM_DENIED" in remaining_line:
-                        if SAML == False:
+                        if SAML_debugs_present == False:
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED</span>')
-                        if SAML == True:
+                        # check for mantis 1023871 before saml group attribute name mismatch
+                        if initial_fnbamd_gmatch_success and not final_fnbamd_gmatch_success and SAML_debugs_present and fnbamd_debugs_present:
+                            analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED with SAML after successful initial group match</span> <span style="color: yellow;">\n->Check Mantis 1023871\n</span>')
+                        if SAML_debugs_present == True and not initial_fnbamd_gmatch_success and not final_fnbamd_gmatch_success:
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd DENIED DETECTED with SAML.</span> <span style="color: yellow;">\n->Check Group Mismatch \n-> Check Group Attribute/Name Mismatch</span>')
                         last_10_lines = rest_lines[max(0, k - 9):k + 1]
                         if any("find_matched_usr_grps-Failed group matching" in l for l in last_10_lines):
                             analysis_output.append(f'<span style="color: red;">[{str(i+k+1)}] Fnbamd failing due to a possible user group mismatch</span>')
-                    if "handle_req-Error starting session" in remaining_line and SAML == True:
+                    if "handle_req-Error starting session" in remaining_line and SAML_debugs_present == True:
                         analysis_output.append(f'<span style="color: yellow;">[{str(i+k+1)}] Fnbamd failing to start. \n->Check if SAML server is responsive \n-> Check: https://community.fortinet.com/t5/FortiGate/Troubleshooting-Tip-IPsec-SAML-Authentication-fails-due-to/ta-p/339738</span>')
                     if 'fnbamd_comm_send_result' in remaining_line and eap_id in remaining_line:
                         match = re.search(r"Sending result (\d+)", remaining_line)
@@ -520,6 +546,11 @@ def ike_parser(text):
                         for info in context:
                             if 'EAP' in info and 'result' not in info:
                                 analysis_output.append(f'       [{str(i+k+1)}]{info.strip()}')
+                    ### check if first fnbamd group match was successful from EAP_proxy authentication
+                    if "__group_match-Group" in remaining_line and "passed group matching" in remaining_line:
+                        initial_fnbamd_gmatch_success = True
+                    elif "find_matched_usr_grps-Failed group matching" in remaining_line:
+                        final_fnbamd_gmatch_success = False
 
 # Adding known issue
         if 'compute DH shared secret request queued' in line:
@@ -883,12 +914,17 @@ def saml_parser(text):
 ike_log = read_file(file_name)
 
 if re.search(r'samld', ike_log):
-    SAML = True
+    SAML_debugs_present = True
 
+
+# Check if FNBAMD debugs are present
+
+if re.search(r'\d] fnbamd', ike_log):
+    fnbamd_debugs_present = True
 
 ike_parser(ike_log)
 
-if SAML == True:
+if SAML_debugs_present == True:
     saml_parser(ike_log)
 
 def deduplicate_array(arr):
